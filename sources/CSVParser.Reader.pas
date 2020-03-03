@@ -29,8 +29,7 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  System.Generics.Collections,
-  System.Generics.Defaults;
+  System.Generics.Collections;
 
 type
   {$SCOPEDENUMS ON}
@@ -40,7 +39,6 @@ type
 
   TCSVReader = class
   private
-    FStringComparer: IComparer<string>;
     FFieldNames: TList<string>;
     FCSVFile: TStrings;
     FFileName: string;
@@ -132,12 +130,6 @@ begin
 
   FCSVFile := TStringList.Create;
   FFieldNames := TList<string>.Create;
-
-  FStringComparer := TDelegatedComparer<string>.Create(
-    function(const Left, Right: string): Integer
-    begin
-      Result := CompareText(Left, Right);
-    end);
 end;
 
 destructor TCSVReader.Destroy;
@@ -179,8 +171,19 @@ end;
 function TCSVReader.GetFieldByName(Index: string): string;
 var
   LIndex: Integer;
+  I: Integer;
 begin
-  if FFieldNames.BinarySearch(Index, LIndex, FStringComparer) then
+  LIndex := -1;
+  for I := 0 to Pred(FFieldNames.Count) do
+  begin
+    if SameText(Index, FFieldNames[I]) then
+    begin
+      LIndex := I;
+      Break;
+    end;
+  end;
+
+  if LIndex >= 0 then
     Result := GetField(LIndex)
   else
     raise ECSVParserException.CreateFmt('"%s" field not found', [Index]);
@@ -262,6 +265,7 @@ begin
     Exit;
 
   LHeader := FCSVFile[FFieldNameRow];
+  FFieldNames.Clear;
   FFieldNames.AddRange(GetFields(LHeader));
 end;
 
@@ -284,7 +288,6 @@ begin
     FCurrentRow := FCSVFile[FRowNumber]
   else
     FCurrentRow := '';
-
 end;
 
 procedure TCSVReader.Open;
