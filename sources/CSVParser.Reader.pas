@@ -4,7 +4,7 @@
 //
 // Copyright (c) 2020 João Antônio Duarte
 //
-// https://github.com/joaoduarte19
+// https://github.com/joaoduarte19/csvparser
 //
 // ***************************************************************************
 //
