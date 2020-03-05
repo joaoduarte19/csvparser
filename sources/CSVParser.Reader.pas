@@ -33,7 +33,7 @@ uses
 
 type
   {$SCOPEDENUMS ON}
-  TEncodingType = (ANSI, UTF8);
+  TEncodingType = (AUTO_DETECT, ANSI, UTF8);
 
   ECSVParserException = class(Exception);
 
@@ -75,6 +75,7 @@ type
     procedure Next;
     procedure Last;
     function Eof: Boolean;
+    function ContainsField(const AFieldName: string): Boolean;
 
     property FileName: string read FFileName write FFileName;
     property EncodingType: TEncodingType read FEncodingType write FEncodingType default TEncodingType.ANSI;
@@ -89,6 +90,7 @@ type
     property FieldsCount: Integer read GetFieldsCount;
     property RowNumber: Integer read FRowNumber write SetRowNumber;
     property RowsCount: Integer read GetRowsCount;
+    property CurrentRow: string read FCurrentRow;
   end;
 
 implementation
@@ -115,15 +117,29 @@ begin
   FFieldNames.Clear;
 end;
 
+function TCSVReader.ContainsField(const AFieldName: string): Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  for I := 0 to Pred(FFieldNames.Count) do
+  begin
+    if SameText(AFieldName, FFieldNames[I]) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
 constructor TCSVReader.Create;
 begin
   inherited;
 
   FFileName := '';
   FRowDelimiter := sLineBreak;
-  FieldNameRow := 0;
+  FFieldNameRow := 0;
   FFirstDataRow := 1;
-  FEncodingType := TEncodingType.ANSI;
+  FEncodingType := TEncodingType.AUTO_DETECT;
   FTextQualifier := #0;
   FFieldDelimiter := ',';
   FRowNumber := - 1;
@@ -151,12 +167,11 @@ end;
 
 function TCSVReader.GetEncoding: TEncoding;
 begin
-  Result := TEncoding.ANSI;
   case FEncodingType of
     TEncodingType.ANSI:
       Result := TEncoding.ANSI;
-    TEncodingType.UTF8:
-      Result := TEncoding.UTF8;
+  else
+    Result := TEncoding.UTF8;
   end;
 end;
 
@@ -173,7 +188,7 @@ var
   LIndex: Integer;
   I: Integer;
 begin
-  LIndex := -1;
+  LIndex := - 1;
   for I := 0 to Pred(FFieldNames.Count) do
   begin
     if SameText(Index, FFieldNames[I]) then
@@ -277,7 +292,19 @@ end;
 
 procedure TCSVReader.LoadFromStream(const AStream: TStream);
 begin
-  FCSVFile.LoadFromStream(AStream, GetEncoding);
+  if FEncodingType = TEncodingType.AUTO_DETECT then
+  begin
+    try
+      FCSVFile.LoadFromStream(AStream, TEncoding.UTF8);
+    except
+      FCSVFile.LoadFromStream(AStream, TEncoding.ANSI);
+    end
+  end
+  else
+  begin
+    FCSVFile.LoadFromStream(AStream, GetEncoding);
+  end;
+
   AfterOpen;
 end;
 
@@ -297,7 +324,19 @@ begin
 
   FCSVFile.Clear;
   FCSVFile.LineBreak := FRowDelimiter;
-  FCSVFile.LoadFromFile(FFileName, GetEncoding);
+
+  if FEncodingType = TEncodingType.AUTO_DETECT then
+  begin
+    try
+      FCSVFile.LoadFromFile(FFileName, TEncoding.UTF8);
+    except
+      FCSVFile.LoadFromFile(FFileName, TEncoding.ANSI);
+    end;
+  end
+  else
+  begin
+    FCSVFile.LoadFromFile(FFileName, GetEncoding);
+  end;
 
   AfterOpen;
 end;
