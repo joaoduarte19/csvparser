@@ -295,8 +295,10 @@ begin
   if FEncodingType = TEncodingType.AUTO_DETECT then
   begin
     try
+      AStream.Position := 0;
       FCSVFile.LoadFromStream(AStream, TEncoding.UTF8);
     except
+      AStream.Position := 0;
       FCSVFile.LoadFromStream(AStream, TEncoding.ANSI);
     end
   end
